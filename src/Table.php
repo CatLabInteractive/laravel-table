@@ -83,15 +83,16 @@ class Table
     public function render()
     {
         $firstItem = $this->resourceCollection->first();
-        if (!$firstItem) {
-            return '<p>No content.</p>';
-        }
+        if ($firstItem) {
+            $columns = array_keys($firstItem->toArray());
 
-        $columns = array_keys($firstItem->toArray());
-
-        $resources = [];
-        foreach ($this->resourceCollection as $v) {
-            $resources[] = $v;
+            $resources = [];
+            foreach ($this->resourceCollection as $v) {
+                $resources[] = $v;
+            }
+        } else {
+            $columns = [];
+            $resources = [];
         }
 
         return new HtmlString(view('table::table', [
