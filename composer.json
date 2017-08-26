@@ -1,0 +1,18 @@
+{
+    "name": "catlabinteractive/laravel-table",
+    "description": "Laravel html table builder.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Thijs Van der Schaeghe",
+            "email": "thijs@catlab.be"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "CatLab\\Laravel\\Table\\": "src/"
+        }
+    },
+    "require": {}
+}
