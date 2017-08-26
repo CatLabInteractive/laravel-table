@@ -29,7 +29,7 @@
         @endforeach
     </table>
 @else
-    <p>Nog geen data...</p>
+    <p>No data set.</p>
 @endif
 
 @foreach($collectionActions as $action)
