@@ -1,6 +1,6 @@
 <?php
 
-namespace CatLab\LaravelTable;
+namespace CatLab\Laravel\Table;
 
 use Illuminate\Support\ServiceProvider;
 

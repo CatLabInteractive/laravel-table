@@ -18,23 +18,10 @@
             @endforeach
 
             <td>
-
-                <?php
-                    $id = ($resource->getIdentifiers()->getValues())[0]->getValue();
-                ?>
                 @foreach($modelActions as $action)
-                    <?php
-                        $routeParameters = [
-                            'id' => $id
-                        ];
-
-                        if ($action['routeParameters'] !== null) {
-                            $routeParameters = array_merge($action['routeParameters'], [ 'id' => $id ]);
-                        }
-
-                        $routeParameters = array_merge($routeParameters, $action['queryParameters']);
-                    ?>
-                    <a href="{{ action($action['action'], $routeParameters) }}">{{ $action['label'] }}</a>
+                    @if($action->shouldShow($resource))
+                        <a href="{{ $action->getUrl($resource) }}">{{ $action->getLabel() }}</a>
+                    @endif
                 @endforeach
             </td>
         </tr>
@@ -42,7 +29,7 @@
 </table>
 
 @foreach($collectionActions as $action)
-    <a class="btn btn-primary" href="{{ action($action['action'], array_merge($action['routeParameters'], $action['queryParameters'])) }}">
-        {{ $action['label'] }}
+    <a class="btn btn-primary" href="{{ $action->getUrl() }}">
+        {{ $action->getLabel() }}
     </a>
 @endforeach

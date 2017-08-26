@@ -5,6 +5,9 @@ namespace CatLab\Laravel\Table;
 use CatLab\Charon\Collections\ResourceCollection;
 use CatLab\Charon\Interfaces\Context;
 use CatLab\Charon\Interfaces\ResourceDefinition;
+use CatLab\Laravel\Table\Models\Action;
+use CatLab\Laravel\Table\Models\CollectionAction;
+use CatLab\Laravel\Table\Models\ModelAction;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -29,12 +32,12 @@ class Table
     private $context;
 
     /**
-     * @var string
+     * @var Action[]
      */
     private $modelActions;
 
     /**
-     * @var string
+     * @var Action[]
      */
     private $collectionActions;
 
@@ -56,36 +59,23 @@ class Table
     }
 
     /**
-     * @param $action
-     * @param $routeParameters
-     * @param $queryParameters
-     * @param $label
+     * @param ModelAction $action
+     * @return $this
      */
-    public function modelAction($action, $routeParameters, $queryParameters, $label)
+    public function modelAction(ModelAction $action)
     {
-        $this->modelActions[] = [
-            'action' => $action,
-            'routeParameters' => $routeParameters,
-            'queryParameters' => $queryParameters,
-            'label' => $label
-        ];
+        $this->modelActions[] = $action;
+        return $this;
     }
 
     /**
-     * @param $action
-     * @param $routeParameters
-     * @param $queryParameters
-     * @param $label
-     * @internal param $parameters
+     * @param CollectionAction $action
+     * @return $this
      */
-    public function collectionAction($action, $routeParameters, $queryParameters, $label)
+    public function collectionAction(CollectionAction $action)
     {
-        $this->collectionActions[] = [
-            'action' => $action,
-            'routeParameters' => $routeParameters,
-            'queryParameters' => $queryParameters,
-            'label' => $label
-        ];
+        $this->collectionActions[] = $action;
+        return $this;
     }
     /**
      * @return HtmlString
