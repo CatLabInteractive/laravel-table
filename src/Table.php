@@ -56,6 +56,7 @@ class Table
         $this->definition = $definition;
         $this->context = $context;
         $this->modelActions = [];
+        $this->collectionActions = [];
     }
 
     /**
