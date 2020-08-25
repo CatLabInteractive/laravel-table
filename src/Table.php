@@ -8,6 +8,7 @@ use CatLab\Charon\Interfaces\ResourceDefinition;
 use CatLab\Laravel\Table\Models\Action;
 use CatLab\Laravel\Table\Models\CollectionAction;
 use CatLab\Laravel\Table\Models\ModelAction;
+use CatLab\Laravel\Table\Models\Pagination;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -42,21 +43,29 @@ class Table
     private $collectionActions;
 
     /**
+     * @var string
+     */
+    private $currentUrl;
+
+    /**
      * Table constructor.
      * @param ResourceCollection $collection
      * @param ResourceDefinition $definition
      * @param Context $context
+     * @param string $currentUrl
      */
     public function __construct(
         ResourceCollection $collection,
         ResourceDefinition $definition,
-        Context $context
+        Context $context,
+        $currentUrl = null
     ) {
         $this->resourceCollection = $collection;
         $this->definition = $definition;
         $this->context = $context;
         $this->modelActions = [];
         $this->collectionActions = [];
+        $this->currentUrl = $currentUrl;
     }
 
     /**
@@ -96,11 +105,17 @@ class Table
             $resources = [];
         }
 
+        $pagination = null;
+        if ($this->currentUrl) {
+            $pagination = new Pagination($this->resourceCollection, $this->currentUrl);
+        }
+
         return new HtmlString(view('table::table', [
             'columns' => $columns,
             'resources' => $resources,
             'modelActions' => $this->modelActions,
-            'collectionActions' => $this->collectionActions
+            'collectionActions' => $this->collectionActions,
+            'pagination' => $pagination
         ])->__toString());
     }
 }
