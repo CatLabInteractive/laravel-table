@@ -9,6 +9,22 @@ namespace CatLab\Laravel\Table\Models;
 class ModelAction extends Action
 {
     /**
+     * @var string
+     */
+    private $idParameter;
+
+    /**
+     * @param string $action
+     * @param string $label
+     * @param string $idParameter
+     */
+    public function __construct($action, $label, $idParameter = 'id')
+    {
+        parent::__construct($action, $label);
+        $this->idParameter = $idParameter;
+    }
+
+    /**
      * @var \Closure
      */
     protected $condition;
@@ -23,11 +39,11 @@ class ModelAction extends Action
         $id = $this->getIdFromModel($model);
 
         $routeParameters = [
-            'id' => $id
+            $this->idParameter => $id
         ];
 
         if ($this->routeParameters !== null) {
-            $routeParameters = array_merge($this->routeParameters, [ 'id' => $id ]);
+            $routeParameters = array_merge($this->routeParameters, [ $this->idParameter => $id ]);
         }
 
         $routeParameters = array_merge($routeParameters, $this->queryParameters);
