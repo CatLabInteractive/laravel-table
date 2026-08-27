@@ -18,14 +18,16 @@
         <tbody>
             @foreach($resources as $resource)
 
+                @php($values = $resource->toArray())
                 <tr>
-                    @foreach($resource->toArray() as $col)
-                        @if(is_array($col))
+                    @foreach($columns as $column)
+                        @if(!array_key_exists($column, $values))
+                            <td></td>
+                        @elseif(is_array($values[$column]))
                             <td>relationship?</td>
                         @else
-                            <td>{{ $col }}</td>
+                            <td>{{ $values[$column] }}</td>
                         @endif
-
                     @endforeach
 
                     <td>
