@@ -92,17 +92,19 @@ class Table
      */
     public function render()
     {
-        $firstItem = $this->resourceCollection->first();
-        if ($firstItem) {
-            $columns = array_keys($firstItem->toArray());
-
-            $resources = [];
-            foreach ($this->resourceCollection as $v) {
-                $resources[] = $v;
+        // Columns are the union of every resource's keys, in first-seen
+        // order: a polymorphic collection (e.g. workflow steps of different
+        // types) does not share one key set, so the first item alone would
+        // leave later rows with too few or misaligned cells.
+        $columns = [];
+        $resources = [];
+        foreach ($this->resourceCollection as $v) {
+            $resources[] = $v;
+            foreach (array_keys($v->toArray()) as $key) {
+                if (!in_array($key, $columns, true)) {
+                    $columns[] = $key;
+                }
             }
-        } else {
-            $columns = [];
-            $resources = [];
         }
 
         $pagination = null;
