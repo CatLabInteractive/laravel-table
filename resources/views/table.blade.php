@@ -1,3 +1,11 @@
+@if(count($filters) > 0)
+    @include('table::filters', [
+        'filters' => $filters,
+        'action' => $filterAction,
+        'hidden' => $filterHiddenParameters
+    ])
+@endif
+
 @if(count($rows) > 0)
 
     @if($pagination)
@@ -9,7 +17,20 @@
         <thead>
             <tr>
                 @foreach($columns as $column)
-                    <th>{{ $column }}</th>
+                    <th>
+                        @if($column->isSortable())
+                            <a href="{{ $column->getSortUrl() }}">
+                                {{ $column->getLabel() }}
+                                @if($column->isSortedAscending())
+                                    &#9650;
+                                @elseif($column->isSortedDescending())
+                                    &#9660;
+                                @endif
+                            </a>
+                        @else
+                            {{ $column->getLabel() }}
+                        @endif
+                    </th>
                 @endforeach
                 <th></th>
             </tr>
@@ -19,7 +40,7 @@
             @foreach($rows as $row)
                 <tr>
                     @foreach($columns as $column)
-                        @php($cell = $row['cells'][$column] ?? null)
+                        @php($cell = $row['cells'][$column->getKey()] ?? null)
                         <td>@if($cell)@include('table::cell', [ 'cell' => $cell ])@endif</td>
                     @endforeach
 

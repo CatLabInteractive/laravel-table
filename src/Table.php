@@ -5,13 +5,18 @@ namespace CatLab\Laravel\Table;
 use CatLab\Charon\Collections\ResourceCollection;
 use CatLab\Charon\Interfaces\Context;
 use CatLab\Charon\Interfaces\ResourceDefinition;
+use CatLab\Charon\Interfaces\ResourceTransformer;
+use CatLab\Charon\Models\Properties\ResourceField;
 use CatLab\Charon\Models\RESTResource;
 use CatLab\Charon\Models\Values\Base\RelationshipValue;
 use CatLab\Charon\Models\Values\Base\Value;
 use CatLab\Laravel\Table\Models\Action;
 use CatLab\Laravel\Table\Models\Cell;
 use CatLab\Laravel\Table\Models\CollectionAction;
+use CatLab\Laravel\Table\Models\Column;
+use CatLab\Laravel\Table\Models\Filter;
 use CatLab\Laravel\Table\Models\RelatedResource;
+use CatLab\Laravel\Table\Support\QueryUrl;
 use CatLab\Laravel\Table\Models\ModelAction;
 use CatLab\Laravel\Table\Models\Pagination;
 use Illuminate\Support\HtmlString;
@@ -51,6 +56,26 @@ class Table
      * @var string
      */
     private $currentUrl;
+
+    /**
+     * Query parameters that never carry over into sort / filter urls.
+     * @var string[]
+     */
+    protected $paginationQueryParameters = [
+        'page',
+        'before',
+        'after'
+    ];
+
+    /**
+     * @var bool
+     */
+    private $sortable = false;
+
+    /**
+     * @var bool
+     */
+    private $filterable = false;
 
     /**
      * @var \Closure|null
@@ -102,6 +127,31 @@ class Table
         $this->collectionActions[] = $action;
         return $this;
     }
+    /**
+     * Turn the headers of sortable fields (ResourceField::sortable()) into
+     * links that sort the collection through charon's "sort" parameter.
+     * Requires a current url.
+     * @param bool $sortable
+     * @return $this
+     */
+    public function sortable($sortable = true)
+    {
+        $this->sortable = $sortable;
+        return $this;
+    }
+
+    /**
+     * Show a filter form for the filterable fields
+     * (ResourceField::filterable()). Requires a current url.
+     * @param bool $filterable
+     * @return $this
+     */
+    public function filterable($filterable = true)
+    {
+        $this->filterable = $filterable;
+        return $this;
+    }
+
     /**
      * Resolve the url a related resource (as shown in a relationship cell)
      * links to. Return null for "no link".
@@ -161,17 +211,140 @@ class Table
         }
 
         $pagination = null;
+        $currentUrl = null;
         if ($this->currentUrl) {
             $pagination = new Pagination($this->resourceCollection, $this->currentUrl);
+            $currentUrl = new QueryUrl($this->currentUrl);
         }
 
         return new HtmlString(view('table::table', [
-            'columns' => $columns,
+            'columns' => $this->makeColumns($columns, $currentUrl),
+            'filters' => $this->makeFilters($currentUrl),
+            'filterAction' => $currentUrl ? $currentUrl->getPath() : null,
+            'filterHiddenParameters' => $currentUrl ? $this->getFilterHiddenParameters($currentUrl) : [],
             'rows' => $rows,
             'modelActions' => $this->modelActions,
             'collectionActions' => $this->collectionActions,
             'pagination' => $pagination
         ])->__toString());
+    }
+
+    /**
+     * @param string[] $keys
+     * @param QueryUrl|null $currentUrl
+     * @return Column[]
+     */
+    protected function makeColumns(array $keys, ?QueryUrl $currentUrl)
+    {
+        $sortableFields = [];
+        if ($this->sortable && $currentUrl) {
+            foreach ($this->getResourceFields() as $field) {
+                if ($field->isSortable()) {
+                    $sortableFields[$field->getDisplayName()] = $field;
+                }
+            }
+        }
+
+        $currentSort = $currentUrl ? (string) $currentUrl->get(ResourceTransformer::SORT_PARAMETER) : '';
+
+        $columns = [];
+        foreach ($keys as $key) {
+            if (!isset($sortableFields[$key])) {
+                $columns[] = new Column($key);
+                continue;
+            }
+
+            $direction = null;
+            $nextSort = $key;
+            if ($currentSort === $key) {
+                $direction = Column::ASC;
+                $nextSort = '!' . $key;
+            } elseif ($currentSort === '!' . $key) {
+                $direction = Column::DESC;
+            }
+
+            $columns[] = new Column(
+                $key,
+                $currentUrl->with(
+                    [ ResourceTransformer::SORT_PARAMETER => $nextSort ],
+                    $this->paginationQueryParameters
+                ),
+                $direction
+            );
+        }
+
+        return $columns;
+    }
+
+    /**
+     * @param QueryUrl|null $currentUrl
+     * @return Filter[]
+     */
+    protected function makeFilters(?QueryUrl $currentUrl)
+    {
+        if (!$this->filterable || !$currentUrl) {
+            return [];
+        }
+
+        $filters = [];
+        foreach ($this->getResourceFields() as $field) {
+            if (!$field->isFilterable()) {
+                continue;
+            }
+
+            $name = $field->getDisplayName();
+            $value = $currentUrl->get($name);
+
+            $filters[] = new Filter(
+                $name,
+                is_scalar($value) ? (string) $value : null,
+                $field->getAllowedValues() ?: null
+            );
+        }
+
+        return $filters;
+    }
+
+    /**
+     * Query parameters the filter form must carry along as hidden inputs:
+     * everything that is neither a filter nor pagination.
+     * @param QueryUrl $currentUrl
+     * @return array
+     */
+    protected function getFilterHiddenParameters(QueryUrl $currentUrl)
+    {
+        $filterNames = [];
+        foreach ($this->makeFilters($currentUrl) as $filter) {
+            $filterNames[] = $filter->getName();
+        }
+
+        $hidden = [];
+        foreach ($currentUrl->getQuery() as $key => $value) {
+            if (
+                in_array($key, $filterNames, true) ||
+                in_array($key, $this->paginationQueryParameters, true) ||
+                !is_scalar($value)
+            ) {
+                continue;
+            }
+            $hidden[$key] = $value;
+        }
+
+        return $hidden;
+    }
+
+    /**
+     * @return ResourceField[]
+     */
+    protected function getResourceFields()
+    {
+        $out = [];
+        foreach ($this->definition->getFields() as $field) {
+            if ($field instanceof ResourceField) {
+                $out[] = $field;
+            }
+        }
+        return $out;
     }
 
     /**
