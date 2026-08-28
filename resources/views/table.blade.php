@@ -1,4 +1,4 @@
-@if(count($resources) > 0)
+@if(count($rows) > 0)
 
     @if($pagination)
         @include('table::pagination', [ 'pagination' => $pagination ])
@@ -16,24 +16,17 @@
         </thead>
 
         <tbody>
-            @foreach($resources as $resource)
-
-                @php($values = $resource->toArray())
+            @foreach($rows as $row)
                 <tr>
                     @foreach($columns as $column)
-                        @if(!array_key_exists($column, $values))
-                            <td></td>
-                        @elseif(is_array($values[$column]))
-                            <td>relationship?</td>
-                        @else
-                            <td>{{ $values[$column] }}</td>
-                        @endif
+                        @php($cell = $row['cells'][$column] ?? null)
+                        <td>@if($cell)@include('table::cell', [ 'cell' => $cell ])@endif</td>
                     @endforeach
 
                     <td>
                         @foreach($modelActions as $action)
-                            @if($action->shouldShow($resource))
-                                <a href="{{ $action->getUrl($resource) }}">{{ $action->getLabel() }}</a>
+                            @if($action->shouldShow($row['resource']))
+                                <a href="{{ $action->getUrl($row['resource']) }}">{{ $action->getLabel() }}</a>
                             @endif
                         @endforeach
                     </td>

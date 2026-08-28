@@ -5,8 +5,13 @@ namespace CatLab\Laravel\Table;
 use CatLab\Charon\Collections\ResourceCollection;
 use CatLab\Charon\Interfaces\Context;
 use CatLab\Charon\Interfaces\ResourceDefinition;
+use CatLab\Charon\Models\RESTResource;
+use CatLab\Charon\Models\Values\Base\RelationshipValue;
+use CatLab\Charon\Models\Values\Base\Value;
 use CatLab\Laravel\Table\Models\Action;
+use CatLab\Laravel\Table\Models\Cell;
 use CatLab\Laravel\Table\Models\CollectionAction;
+use CatLab\Laravel\Table\Models\RelatedResource;
 use CatLab\Laravel\Table\Models\ModelAction;
 use CatLab\Laravel\Table\Models\Pagination;
 use Illuminate\Support\HtmlString;
@@ -92,19 +97,33 @@ class Table
      */
     public function render()
     {
-        // Columns are the union of every resource's keys, in first-seen
-        // order: a polymorphic collection (e.g. workflow steps of different
-        // types) does not share one key set, so the first item alone would
-        // leave later rows with too few or misaligned cells.
+        // Columns are the union of every resource's visible properties, in
+        // first-seen order: a polymorphic collection (e.g. workflow steps of
+        // different types) does not share one key set, so the first item
+        // alone would leave later rows with too few or misaligned cells.
         $columns = [];
-        $resources = [];
-        foreach ($this->resourceCollection as $v) {
-            $resources[] = $v;
-            foreach (array_keys($v->toArray()) as $key) {
+        $rows = [];
+        foreach ($this->resourceCollection as $resource) {
+            /** @var RESTResource $resource */
+            $cells = [];
+            foreach ($resource->getProperties()->getValues() as $value) {
+                /** @var Value $value */
+                if (!$value->isVisible()) {
+                    continue;
+                }
+
+                $key = $value->getField()->getDisplayName();
                 if (!in_array($key, $columns, true)) {
                     $columns[] = $key;
                 }
+
+                $cells[$key] = $this->makeCell($value);
             }
+
+            $rows[] = [
+                'resource' => $resource,
+                'cells' => $cells
+            ];
         }
 
         $pagination = null;
@@ -114,10 +133,57 @@ class Table
 
         return new HtmlString(view('table::table', [
             'columns' => $columns,
-            'resources' => $resources,
+            'rows' => $rows,
             'modelActions' => $this->modelActions,
             'collectionActions' => $this->collectionActions,
             'pagination' => $pagination
         ])->__toString());
+    }
+
+    /**
+     * @param Value $value
+     * @return Cell
+     */
+    protected function makeCell(Value $value)
+    {
+        if ($value instanceof RelationshipValue) {
+            $related = [];
+            foreach ($value->getChildren() as $child) {
+                if ($child instanceof RESTResource) {
+                    $related[] = new RelatedResource($this->getResourceLabel($child));
+                }
+            }
+            return Cell::relationship($related);
+        }
+
+        $raw = $value->toArray();
+        if (is_array($raw)) {
+            return Cell::object($raw);
+        }
+
+        return Cell::scalar($raw);
+    }
+
+    /**
+     * Human readable label for a related resource: a name-like field when
+     * the resource has one, its identifier otherwise.
+     * @param RESTResource $resource
+     * @return string
+     */
+    protected function getResourceLabel(RESTResource $resource)
+    {
+        $values = $resource->toArray();
+        foreach ([ 'name', 'title', 'label' ] as $candidate) {
+            if (isset($values[$candidate]) && is_scalar($values[$candidate])) {
+                return (string) $values[$candidate];
+            }
+        }
+
+        $identifiers = $resource->getIdentifiers()->getValues();
+        if (count($identifiers) > 0) {
+            return '#' . $identifiers[0]->getValue();
+        }
+
+        return '?';
     }
 }
