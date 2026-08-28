@@ -6,7 +6,7 @@ use CatLab\Charon\Models\ResourceDefinition;
 use Tests\Support\Models\Tag;
 
 /**
- * Deliberately has no "name" field: exercises the label fallback.
+ * Deliberately has no name-like field (name/title/label): exercises the label fallback.
  */
 class TagDefinition extends ResourceDefinition
 {
@@ -15,6 +15,6 @@ class TagDefinition extends ResourceDefinition
         parent::__construct(Tag::class);
 
         $this->identifier('id')->int();
-        $this->field('label')->string()->visible(true, true);
+        $this->field('slug')->string()->visible(true, true);
     }
 }

@@ -53,6 +53,16 @@ class Table
     private $currentUrl;
 
     /**
+     * @var \Closure|null
+     */
+    private $resourceUrlResolver;
+
+    /**
+     * @var \Closure|null
+     */
+    private $resourceLabelResolver;
+
+    /**
      * Table constructor.
      * @param ResourceCollection $collection
      * @param ResourceDefinition $definition
@@ -92,6 +102,30 @@ class Table
         $this->collectionActions[] = $action;
         return $this;
     }
+    /**
+     * Resolve the url a related resource (as shown in a relationship cell)
+     * links to. Return null for "no link".
+     * @param \Closure $resolver function(RESTResource $resource): ?string
+     * @return $this
+     */
+    public function setResourceUrlResolver(\Closure $resolver)
+    {
+        $this->resourceUrlResolver = $resolver;
+        return $this;
+    }
+
+    /**
+     * Resolve the label a related resource is shown as. Replaces the default
+     * "name-like field, else identifier" heuristic.
+     * @param \Closure $resolver function(RESTResource $resource): string
+     * @return $this
+     */
+    public function setResourceLabelResolver(\Closure $resolver)
+    {
+        $this->resourceLabelResolver = $resolver;
+        return $this;
+    }
+
     /**
      * @return HtmlString
      */
@@ -150,7 +184,10 @@ class Table
             $related = [];
             foreach ($value->getChildren() as $child) {
                 if ($child instanceof RESTResource) {
-                    $related[] = new RelatedResource($this->getResourceLabel($child));
+                    $related[] = new RelatedResource(
+                        $this->getResourceLabel($child),
+                        $this->getResourceUrl($child)
+                    );
                 }
             }
             return Cell::relationship($related);
@@ -172,6 +209,10 @@ class Table
      */
     protected function getResourceLabel(RESTResource $resource)
     {
+        if ($this->resourceLabelResolver) {
+            return (string) call_user_func($this->resourceLabelResolver, $resource);
+        }
+
         $values = $resource->toArray();
         foreach ([ 'name', 'title', 'label' ] as $candidate) {
             if (isset($values[$candidate]) && is_scalar($values[$candidate])) {
@@ -185,5 +226,18 @@ class Table
         }
 
         return '?';
+    }
+
+    /**
+     * @param RESTResource $resource
+     * @return string|null
+     */
+    protected function getResourceUrl(RESTResource $resource)
+    {
+        if (!$this->resourceUrlResolver) {
+            return null;
+        }
+
+        return call_user_func($this->resourceUrlResolver, $resource);
     }
 }

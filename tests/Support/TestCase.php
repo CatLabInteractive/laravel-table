@@ -41,7 +41,7 @@ abstract class TestCase extends OrchestraTestCase
      */
     protected function toCollection(array $entities, string $definition = BookDefinition::class): ResourceCollection
     {
-        $transformer = new PlainResourceTransformer();
+        $transformer = new PlainResourceTransformer(null, null, null, new ArrayQueryAdapter());
         return $transformer->toResources($definition, $entities, $this->indexContext());
     }
 }
