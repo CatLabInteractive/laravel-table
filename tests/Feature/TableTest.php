@@ -166,4 +166,23 @@ class TableTest extends TestCase
 
         $this->assertStringNotContainsString('<form', $html);
     }
+
+    public function testACellCanBeBuiltForASingleValueOutsideTheTable()
+    {
+        $collection = $this->toCollection([
+            new Book(1, 'Emma', new Author(7, 'Jane Austen')),
+        ]);
+
+        $table = (new Table($collection, new BookDefinition(), $this->indexContext()))
+            ->setResourceUrlResolver(function () {
+                return '/admin/authors/7';
+            });
+
+        $author = $collection->first()->getProperties()->getFromName('author');
+        $cell = $table->makeCell($author);
+
+        $this->assertTrue($cell->isRelationship());
+        $this->assertSame('Jane Austen', $cell->getRelated()[0]->getLabel());
+        $this->assertSame('/admin/authors/7', $cell->getRelated()[0]->getUrl());
+    }
 }

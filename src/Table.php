@@ -348,10 +348,13 @@ class Table
     }
 
     /**
+     * Build the cell for one property value. Public so a single value
+     * (e.g. a relationship on a detail page) can be rendered through the
+     * same rules and resolvers as the table: view('table::cell', ['cell' => $cell]).
      * @param Value $value
      * @return Cell
      */
-    protected function makeCell(Value $value)
+    public function makeCell(Value $value)
     {
         if ($value instanceof RelationshipValue) {
             $related = [];
