@@ -3,6 +3,7 @@
 namespace CatLab\Laravel\Table\Models;
 
 use CatLab\Charon\Interfaces\ResourceCollection;
+use CatLab\Laravel\Table\Support\QueryUrl;
 
 /**
  * Class Pagination
@@ -145,24 +146,8 @@ class Pagination
      */
     protected function buildUrl(array $parameters, $label)
     {
-        // first extract the query parameters that exist now.
-        $parts = parse_url($this->url);
-
-        $queryParameters = [];
-        if (isset($parts['query'])) {
-            parse_str($parts['query'], $queryParameters);
-        }
-
-        // now unset all query parameters that are reserved
-        foreach ($this->paginationQueryParameters as $v) {
-            unset($queryParameters[$v]);
-        }
-
-        // now add the new parameters
-        $queryParameters = array_merge($queryParameters, $parameters);
-        $queryString = http_build_query($queryParameters);
-
-        return new PaginationUrl($parts['path'] . '?' . $queryString, $label);
+        $url = (new QueryUrl($this->url))->with($parameters, $this->paginationQueryParameters);
+        return new PaginationUrl($url, $label);
     }
 
     /**
