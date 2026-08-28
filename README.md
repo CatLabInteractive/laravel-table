@@ -35,6 +35,10 @@ build urls and forms; the actual sorting and filtering is done by charon when th
 API (`?sort=name`, `?sort=!name`, `?name=value`). Pagination parameters (`page`, `before`, `after`) are dropped
 from those urls; every other query parameter is preserved.
 
+The filter form is a Bootstrap 3 `form-inline` bar (`.table-filters`): one small input group per filterable field
+with a humanized label (`createdAt` -> "Created at"), a search button and - when a filter is active - a "Clear"
+link back to the unfiltered url.
+
 ## Views
 
 Publish `resources/views` to `resources/views/vendor/table` to customise `table`, `cell`, `filters` and

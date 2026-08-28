@@ -2,6 +2,7 @@
     @include('table::filters', [
         'filters' => $filters,
         'action' => $filterAction,
+        'clearUrl' => $filterClearUrl,
         'hidden' => $filterHiddenParameters
     ])
 @endif

@@ -218,10 +218,13 @@ class Table
             $currentUrl = new QueryUrl($this->currentUrl);
         }
 
+        $filters = $this->makeFilters($currentUrl);
+
         return new HtmlString(view('table::table', [
             'columns' => $this->makeColumns($columns, $currentUrl),
-            'filters' => $this->makeFilters($currentUrl),
+            'filters' => $filters,
             'filterAction' => $currentUrl ? $currentUrl->getPath() : null,
+            'filterClearUrl' => $currentUrl ? $this->getFilterClearUrl($currentUrl, $filters) : null,
             'filterHiddenParameters' => $currentUrl ? $this->getFilterHiddenParameters($currentUrl) : [],
             'rows' => $rows,
             'modelActions' => $this->modelActions,
@@ -304,6 +307,22 @@ class Table
         }
 
         return $filters;
+    }
+
+    /**
+     * The current url without any filter or pagination parameter: what "clear" links to.
+     * @param QueryUrl $currentUrl
+     * @param Filter[] $filters
+     * @return string
+     */
+    protected function getFilterClearUrl(QueryUrl $currentUrl, array $filters)
+    {
+        $unset = $this->paginationQueryParameters;
+        foreach ($filters as $filter) {
+            $unset[] = $filter->getName();
+        }
+
+        return $currentUrl->with([], $unset);
     }
 
     /**

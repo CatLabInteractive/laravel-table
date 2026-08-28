@@ -199,4 +199,25 @@ class TableTest extends TestCase
         $this->assertStringContainsString('href="/books?status=draft&amp;sort=%21title"', $html);
         $this->assertStringNotContainsString('name="other"', $html);
     }
+
+    public function testFilterFormIsAStyledFilterBarWithHumanLabelsAndAClearLinkWhenActive()
+    {
+        $active = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title=Em&sort=title'))
+            ->filterable()
+            ->render();
+
+        // labels are humanized and sit in an input group next to their input
+        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Title</span>\s*<input[^>]*name="title"~', $active);
+        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Status</span>\s*<select[^>]*name="status"~', $active);
+        $this->assertStringContainsString('glyphicon-search', $active);
+        // an active filter offers a clear link that keeps the sort but drops the filters
+        $this->assertStringContainsString('href="/books?sort=title"', $active);
+        $this->assertStringContainsString('Clear', $active);
+
+        $inactive = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?sort=title'))
+            ->filterable()
+            ->render();
+
+        $this->assertStringNotContainsString('Clear', $inactive);
+    }
 }
