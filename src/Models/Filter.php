@@ -44,6 +44,25 @@ class Filter
     }
 
     /**
+     * Human readable version of the name: "created_at" / "createdAt" -> "Created at".
+     * @return string
+     */
+    public function getLabel()
+    {
+        $label = preg_replace('/(?<=[a-z0-9])([A-Z])/', ' $1', $this->name);
+        $label = str_replace(['_', '-'], ' ', $label);
+        return ucfirst(strtolower(trim($label)));
+    }
+
+    /**
+     * @return bool
+     */
+    public function isActive()
+    {
+        return $this->value !== null && $this->value !== '';
+    }
+
+    /**
      * @return string|null
      */
     public function getValue()
