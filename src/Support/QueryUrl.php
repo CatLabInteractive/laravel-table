@@ -29,6 +29,12 @@ class QueryUrl
         if (isset($parts['query'])) {
             parse_str($parts['query'], $this->query);
         }
+
+        // A submitted filter form sends every field, blank ones included;
+        // an empty parameter carries no information, so it is not kept.
+        $this->query = array_filter($this->query, function ($value) {
+            return $value !== '';
+        });
     }
 
     /**

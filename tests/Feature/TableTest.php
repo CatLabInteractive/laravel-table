@@ -185,4 +185,18 @@ class TableTest extends TestCase
         $this->assertSame('Jane Austen', $cell->getRelated()[0]->getLabel());
         $this->assertSame('/admin/authors/7', $cell->getRelated()[0]->getUrl());
     }
+
+    public function testEmptyQueryParametersAreDroppedFromSortAndFilterUrls()
+    {
+        // A submitted filter form sends every field, blank ones included;
+        // those must not stick to the urls the table builds from the current one.
+        $table = (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title=&status=draft&other=&sort=title'))
+            ->sortable()
+            ->filterable();
+
+        $html = (string) $table->render();
+
+        $this->assertStringContainsString('href="/books?status=draft&amp;sort=%21title"', $html);
+        $this->assertStringNotContainsString('name="other"', $html);
+    }
 }
