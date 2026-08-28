@@ -127,6 +127,7 @@ class Table
         $this->collectionActions[] = $action;
         return $this;
     }
+
     /**
      * Turn the headers of sortable fields (ResourceField::sortable()) into
      * links that sort the collection through charon's "sort" parameter.
