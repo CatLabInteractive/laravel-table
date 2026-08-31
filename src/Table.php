@@ -166,9 +166,12 @@ class Table
     }
 
     /**
-     * Resolve the label a related resource is shown as. Replaces the default
-     * "name-like field, else identifier" heuristic.
-     * @param \Closure $resolver function(RESTResource $resource): string
+     * Resolve the label a related resource is shown as, overriding the
+     * default "name-like field, else identifier" heuristic. A resolver that
+     * returns null has no opinion about this particular resource and leaves
+     * it to that heuristic, so a caller can name the few resource types it
+     * knows about without having to reimplement the fallback for the rest.
+     * @param \Closure $resolver function(RESTResource $resource): ?string
      * @return $this
      */
     public function setResourceLabelResolver(\Closure $resolver)
@@ -398,15 +401,20 @@ class Table
     }
 
     /**
-     * Human readable label for a related resource: a name-like field when
-     * the resource has one, its identifier otherwise.
+     * Human readable label for a related resource: whatever the resolver set
+     * through setResourceLabelResolver() says, and otherwise -- or when that
+     * resolver returns null -- a name-like field when the resource has one,
+     * its identifier when it doesn't.
      * @param RESTResource $resource
      * @return string
      */
     protected function getResourceLabel(RESTResource $resource)
     {
         if ($this->resourceLabelResolver) {
-            return (string) call_user_func($this->resourceLabelResolver, $resource);
+            $label = call_user_func($this->resourceLabelResolver, $resource);
+            if ($label !== null) {
+                return (string) $label;
+            }
         }
 
         $values = $resource->toArray();

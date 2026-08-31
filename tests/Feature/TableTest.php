@@ -82,6 +82,24 @@ class TableTest extends TestCase
         $this->assertStringNotContainsString('<a href', $html);
     }
 
+    public function testRelatedResourceLabelResolverReturningNullKeepsTheDefault()
+    {
+        $collection = $this->toCollection([
+            new Book(1, 'Emma', new Author(7, 'Jane Austen')),
+        ]);
+
+        // A resolver that names only the resource types it knows about, and
+        // leaves the rest to the name-like-field heuristic.
+        $table = (new Table($collection, new BookDefinition(), $this->indexContext()))
+            ->setResourceLabelResolver(function (RESTResource $resource) {
+                return null;
+            });
+
+        $html = (string) $table->render();
+
+        $this->assertStringContainsString('Jane Austen', $html);
+    }
+
     public function testRelatedResourceLabelCanBeOverridden()
     {
         $collection = $this->toCollection([
