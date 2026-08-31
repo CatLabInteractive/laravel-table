@@ -107,6 +107,19 @@ class TableTest extends TestCase
         $this->assertStringContainsString('#2', $html);
     }
 
+    public function testRelatedResourceWithABlankNameFallsBackToItsIdentifier()
+    {
+        $collection = $this->toCollection([
+            new Book(1, 'Emma', new Author(7, '')),
+        ]);
+
+        $html = (string) (new Table($collection, new BookDefinition(), $this->indexContext()))->render();
+
+        // an empty name is no label at all -- and, with a url resolver set,
+        // would be a link with nothing to click.
+        $this->assertStringContainsString('#7', $html);
+    }
+
     public function testRelatedResourceLabelCanBeOverridden()
     {
         $collection = $this->toCollection([

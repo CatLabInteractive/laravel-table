@@ -27,7 +27,7 @@ Every visible property of a resource becomes a column; columns are the union ove
 
 - **Scalar fields** render as-is.
 - **Relationships** (expanded `ChildValue` / `ChildrenValue`) render as a comma separated list of related
-  resources. Each is labelled by its `name`, `title` or `label` field when it has one, otherwise by `#<identifier>`;
+  resources. Each is labelled by its `name`, `title` or `label` field when it has a non-empty one, otherwise by `#<identifier>`;
   override with `setResourceLabelResolver()`, which may return `null` for a resource it has no name for and leave
   that one to the default. When a url resolver is set and returns a url, the label becomes a link.
 - **Object / array fields** render as JSON.

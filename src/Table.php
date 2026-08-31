@@ -405,7 +405,9 @@ class Table
      * Human readable label for a related resource: whatever the resolver set
      * through setResourceLabelResolver() says, and otherwise -- or when that
      * resolver returns null -- a name-like field when the resource has one,
-     * its identifier when it doesn't.
+     * its identifier when it doesn't. A name-like field that is the empty
+     * string doesn't count: it would render as a label nobody can see, and
+     * as an invisible link when a url resolver is set.
      * @param RESTResource $resource
      * @return string
      */
@@ -420,7 +422,7 @@ class Table
 
         $values = $resource->toArray();
         foreach ([ 'name', 'title', 'label' ] as $candidate) {
-            if (isset($values[$candidate]) && is_scalar($values[$candidate])) {
+            if (isset($values[$candidate]) && is_scalar($values[$candidate]) && $values[$candidate] !== '') {
                 return (string) $values[$candidate];
             }
         }
