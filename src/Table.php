@@ -155,7 +155,8 @@ class Table
 
     /**
      * Resolve the url a related resource (as shown in a relationship cell)
-     * links to. Return null for "no link".
+     * links to. Null suppresses the link -- unlike the label resolver's null,
+     * which delegates to a default, this one is the final answer.
      * @param \Closure $resolver function(RESTResource $resource): ?string
      * @return $this
      */
@@ -166,9 +167,12 @@ class Table
     }
 
     /**
-     * Resolve the label a related resource is shown as. Replaces the default
-     * "name-like field, else identifier" heuristic.
-     * @param \Closure $resolver function(RESTResource $resource): string
+     * Resolve the label a related resource is shown as, overriding the
+     * default "name-like field, else identifier" heuristic. A resolver that
+     * returns null has no opinion about this particular resource and leaves
+     * it to that heuristic, so a caller can name the few resource types it
+     * knows about without having to reimplement the fallback for the rest.
+     * @param \Closure $resolver function(RESTResource $resource): ?string
      * @return $this
      */
     public function setResourceLabelResolver(\Closure $resolver)
@@ -398,20 +402,27 @@ class Table
     }
 
     /**
-     * Human readable label for a related resource: a name-like field when
-     * the resource has one, its identifier otherwise.
+     * Human readable label for a related resource: whatever the resolver set
+     * through setResourceLabelResolver() says, and otherwise -- or when that
+     * resolver returns null -- a name-like field when the resource has one,
+     * its identifier when it doesn't. A name-like field that is the empty
+     * string doesn't count: it would render as a label nobody can see, and
+     * as an invisible link when a url resolver is set.
      * @param RESTResource $resource
      * @return string
      */
     protected function getResourceLabel(RESTResource $resource)
     {
         if ($this->resourceLabelResolver) {
-            return (string) call_user_func($this->resourceLabelResolver, $resource);
+            $label = call_user_func($this->resourceLabelResolver, $resource);
+            if ($label !== null) {
+                return (string) $label;
+            }
         }
 
         $values = $resource->toArray();
         foreach ([ 'name', 'title', 'label' ] as $candidate) {
-            if (isset($values[$candidate]) && is_scalar($values[$candidate])) {
+            if (isset($values[$candidate]) && is_scalar($values[$candidate]) && $values[$candidate] !== '') {
                 return (string) $values[$candidate];
             }
         }

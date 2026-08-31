@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use CatLab\Charon\Models\RESTResource;
 use CatLab\Laravel\Table\Table;
+use Tests\Support\Definitions\AuthorDefinition;
 use Tests\Support\Definitions\BookDefinition;
 use Tests\Support\Models\Author;
 use Tests\Support\Models\Book;
@@ -80,6 +81,43 @@ class TableTest extends TestCase
 
         $this->assertStringContainsString('Jane Austen', $html);
         $this->assertStringNotContainsString('<a href', $html);
+    }
+
+    public function testRelatedResourceLabelResolverReturningNullKeepsTheDefault()
+    {
+        $collection = $this->toCollection([
+            new Book(1, 'Emma', new Author(7, 'Jane Austen'), [ new Tag(1, 'fiction'), new Tag(2, 'classic') ]),
+        ]);
+
+        // A resolver that names only the resource type it knows about, and
+        // declines on the rest rather than restating the default heuristic.
+        $table = (new Table($collection, new BookDefinition(), $this->indexContext()))
+            ->setResourceLabelResolver(function (RESTResource $resource) {
+                return $resource->getResourceDefinition() instanceof AuthorDefinition
+                    ? 'BY JANE'
+                    : null;
+            });
+
+        $html = (string) $table->render();
+
+        // named by the resolver
+        $this->assertStringContainsString('BY JANE', $html);
+        // declined: tags have no name-like field, so the identifier fallback
+        $this->assertStringContainsString('#1', $html);
+        $this->assertStringContainsString('#2', $html);
+    }
+
+    public function testRelatedResourceWithABlankNameFallsBackToItsIdentifier()
+    {
+        $collection = $this->toCollection([
+            new Book(1, 'Emma', new Author(7, '')),
+        ]);
+
+        $html = (string) (new Table($collection, new BookDefinition(), $this->indexContext()))->render();
+
+        // an empty name is no label at all -- and, with a url resolver set,
+        // would be a link with nothing to click.
+        $this->assertStringContainsString('#7', $html);
     }
 
     public function testRelatedResourceLabelCanBeOverridden()
