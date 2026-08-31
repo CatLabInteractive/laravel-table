@@ -155,7 +155,8 @@ class Table
 
     /**
      * Resolve the url a related resource (as shown in a relationship cell)
-     * links to. Return null for "no link".
+     * links to. Null suppresses the link -- unlike the label resolver's null,
+     * which delegates to a default, this one is the final answer.
      * @param \Closure $resolver function(RESTResource $resource): ?string
      * @return $this
      */

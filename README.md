@@ -10,7 +10,10 @@ $table = (new Table($collection, $resourceDefinition, $context, $request->getReq
     ->sortable()      // headers of ->sortable() fields link to ?sort=field / ?sort=!field
     ->filterable()    // a GET form with one input per ->filterable() field (select for enums)
     ->setResourceUrlResolver(function (RESTResource $related) {
-        return '/admin/things/' . $related->getIdentifiers()->getValues()[0]->getValue(); // or null
+        return '/admin/things/' . $related->getIdentifiers()->getValues()[0]->getValue(); // null suppresses the link
+    })
+    ->setResourceLabelResolver(function (RESTResource $related) {
+        return $related->toArray()['uid'] ?? null; // null falls back to the default heuristic
     })
     ->modelAction(...)
     ->collectionAction(...);
@@ -25,7 +28,8 @@ Every visible property of a resource becomes a column; columns are the union ove
 - **Scalar fields** render as-is.
 - **Relationships** (expanded `ChildValue` / `ChildrenValue`) render as a comma separated list of related
   resources. Each is labelled by its `name`, `title` or `label` field when it has one, otherwise by `#<identifier>`;
-  override with `setResourceLabelResolver()`. When a url resolver is set and returns a url, the label becomes a link.
+  override with `setResourceLabelResolver()`, which may return `null` for a resource it has no name for and leave
+  that one to the default. When a url resolver is set and returns a url, the label becomes a link.
 - **Object / array fields** render as JSON.
 
 ## Sorting and filtering

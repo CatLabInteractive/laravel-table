@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use CatLab\Charon\Models\RESTResource;
 use CatLab\Laravel\Table\Table;
+use Tests\Support\Definitions\AuthorDefinition;
 use Tests\Support\Definitions\BookDefinition;
 use Tests\Support\Models\Author;
 use Tests\Support\Models\Book;
@@ -85,19 +86,25 @@ class TableTest extends TestCase
     public function testRelatedResourceLabelResolverReturningNullKeepsTheDefault()
     {
         $collection = $this->toCollection([
-            new Book(1, 'Emma', new Author(7, 'Jane Austen')),
+            new Book(1, 'Emma', new Author(7, 'Jane Austen'), [ new Tag(1, 'fiction'), new Tag(2, 'classic') ]),
         ]);
 
-        // A resolver that names only the resource types it knows about, and
-        // leaves the rest to the name-like-field heuristic.
+        // A resolver that names only the resource type it knows about, and
+        // declines on the rest rather than restating the default heuristic.
         $table = (new Table($collection, new BookDefinition(), $this->indexContext()))
             ->setResourceLabelResolver(function (RESTResource $resource) {
-                return null;
+                return $resource->getResourceDefinition() instanceof AuthorDefinition
+                    ? 'BY JANE'
+                    : null;
             });
 
         $html = (string) $table->render();
 
-        $this->assertStringContainsString('Jane Austen', $html);
+        // named by the resolver
+        $this->assertStringContainsString('BY JANE', $html);
+        // declined: tags have no name-like field, so the identifier fallback
+        $this->assertStringContainsString('#1', $html);
+        $this->assertStringContainsString('#2', $html);
     }
 
     public function testRelatedResourceLabelCanBeOverridden()
