@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use CatLab\Charon\Models\RESTResource;
 use CatLab\Laravel\Table\Table;
+use Illuminate\Support\Facades\Route;
+use Tests\Support\BookAction;
+use Tests\Support\BookController;
 use Tests\Support\Definitions\AuthorDefinition;
 use Tests\Support\Definitions\BookDefinition;
 use Tests\Support\Models\Author;
@@ -257,5 +260,49 @@ class TableTest extends TestCase
             ->render();
 
         $this->assertStringNotContainsString('Clear', $inactive);
+    }
+
+    public function testActionsWithAnIconAreButtonsAndTheRestSitInADropdown()
+    {
+        $html = (string) $this->tableWithActions()->render();
+
+        // edit and delete are icon buttons carrying their label as a tooltip
+        $this->assertMatchesRegularExpression('~<a\s+href="[^"]*/books/1/edit"\s+class="btn btn-sm btn-outline-secondary table-action table-action-edit"\s+title="Edit"~', $html);
+        $this->assertMatchesRegularExpression('~<a\s+href="[^"]*/books/1/delete"\s+class="btn btn-sm btn-outline-danger table-action table-action-delete"\s+title="Delete"~', $html);
+        $this->assertStringContainsString('<svg', $html);
+
+        // the others are items in the dropdown menu
+        $this->assertStringContainsString('data-toggle="dropdown"', $html);
+        $this->assertMatchesRegularExpression('~<a class="dropdown-item" href="[^"]*/books/1/export">Export</a>~', $html);
+        $this->assertStringNotContainsString('>Edit</a>', $html);
+    }
+
+    public function testHiddenActionsAreLeftOutAndAnEmptyMenuIsNotDrawn()
+    {
+        $table = $this->tableWithActions(false);
+        $html = (string) $table->render();
+
+        $this->assertStringNotContainsString('/books/1/export', $html);
+        $this->assertStringNotContainsString('/books/1/archive', $html);
+        $this->assertStringNotContainsString('table-actions-menu', $html);
+        $this->assertStringContainsString('table-action-edit', $html);
+    }
+
+    private function tableWithActions(bool $showMenuActions = true): Table
+    {
+        Route::get('books/{id}/edit', [ BookController::class, 'edit' ]);
+        Route::get('books/{id}/delete', [ BookController::class, 'destroy' ]);
+        Route::get('books/{id}/export', [ BookController::class, 'export' ]);
+        Route::get('books/{id}/archive', [ BookController::class, 'archive' ]);
+
+        $show = function () use ($showMenuActions) {
+            return $showMenuActions;
+        };
+
+        return (new Table($this->books(), new BookDefinition(), $this->indexContext()))
+            ->modelAction((new BookAction([ BookController::class, 'edit' ], 'Edit'))->setIcon('edit'))
+            ->modelAction((new BookAction([ BookController::class, 'destroy' ], 'Delete'))->setIcon('delete'))
+            ->modelAction((new BookAction([ BookController::class, 'export' ], 'Export'))->setCondition($show))
+            ->modelAction((new BookAction([ BookController::class, 'archive' ], 'Archive'))->setCondition($show));
     }
 }

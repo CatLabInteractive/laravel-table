@@ -45,12 +45,35 @@
                         <td>@if($cell)@include('table::cell', [ 'cell' => $cell ])@endif</td>
                     @endforeach
 
-                    <td>
-                        @foreach($modelActions as $action)
-                            @if($action->shouldShow($row['resource']))
-                                <a href="{{ $action->getUrl($row['resource']) }}">{{ $action->getLabel() }}</a>
-                            @endif
+                    <td class="table-actions text-right text-end text-nowrap">
+                        @foreach($row['iconActions'] as $action)
+                            <a
+                                href="{{ $action->getUrl($row['resource']) }}"
+                                class="btn btn-sm {{ $action->getIcon() === 'delete' ? 'btn-outline-danger' : 'btn-outline-secondary' }} table-action table-action-{{ $action->getIcon() }}"
+                                title="{{ $action->getLabel() }}"
+                                aria-label="{{ $action->getLabel() }}"
+                            >@include('table::icons.' . $action->getIcon())</a>
                         @endforeach
+
+                        @if(count($row['menuActions']) > 0)
+                            <div class="dropdown d-inline-block table-actions-menu">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-secondary table-action table-action-more"
+                                    data-toggle="dropdown"
+                                    data-bs-toggle="dropdown"
+                                    aria-haspopup="true"
+                                    aria-expanded="false"
+                                    title="More actions"
+                                    aria-label="More actions"
+                                >@include('table::icons.more')</button>
+                                <div class="dropdown-menu dropdown-menu-right dropdown-menu-end">
+                                    @foreach($row['menuActions'] as $action)
+                                        <a class="dropdown-item" href="{{ $action->getUrl($row['resource']) }}">{{ $action->getLabel() }}</a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </td>
                 </tr>
             @endforeach

@@ -43,7 +43,20 @@ The filter form is a Bootstrap 3 `form-inline` bar (`.table-filters`): one small
 with a humanized label (`createdAt` -> "Created at"), a search button and - when a filter is active - a "Clear"
 link back to the unfiltered url.
 
+## Row actions
+
+`modelAction()` adds a link to every row (hide it per row with `setCondition()`). An action with
+`setIcon('edit')` is drawn as a small icon button with its label as tooltip; all other actions go in a dropdown
+menu behind a "more" button, which uses Bootstrap's dropdown plugin (`data-toggle` and `data-bs-toggle` are
+both set, so Bootstrap 4 and 5 work). The icons `view`, `edit` and `delete` ship with the package as inline SVG;
+the `delete` button is drawn in the danger colour.
+
+```php
+$table->modelAction((new ModelAction('BookController@edit', 'Edit'))->setIcon('edit'));
+$table->modelAction(new ModelAction('BookController@export', 'Export')); // in the dropdown
+```
+
 ## Views
 
 Publish `resources/views` to `resources/views/vendor/table` to customise `table`, `cell`, `filters` and
-`pagination`.
+`pagination`, or to add icons (`icons/<name>.blade.php`).
