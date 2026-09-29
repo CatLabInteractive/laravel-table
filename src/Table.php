@@ -209,9 +209,27 @@ class Table
                 $cells[$key] = $this->makeCell($value);
             }
 
+            // Actions with an icon sit next to the row as buttons, the rest
+            // go in the row's dropdown menu.
+            $iconActions = [];
+            $menuActions = [];
+            foreach ($this->modelActions as $action) {
+                if (!$action->shouldShow($resource)) {
+                    continue;
+                }
+
+                if ($action->getIcon() !== null) {
+                    $iconActions[] = $action;
+                } else {
+                    $menuActions[] = $action;
+                }
+            }
+
             $rows[] = [
                 'resource' => $resource,
-                'cells' => $cells
+                'cells' => $cells,
+                'iconActions' => $iconActions,
+                'menuActions' => $menuActions
             ];
         }
 

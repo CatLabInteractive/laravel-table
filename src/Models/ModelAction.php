@@ -30,6 +30,11 @@ class ModelAction extends Action
     protected $condition;
 
     /**
+     * @var string|null
+     */
+    protected $icon;
+
+    /**
      * Get the URL
      * @param $model
      * @return string
@@ -59,6 +64,28 @@ class ModelAction extends Action
     {
         $this->condition = $condition;
         return $this;
+    }
+
+    /**
+     * Show this action as an icon button next to the row instead of in the
+     * row's dropdown menu. The name picks the view table::icons.{name}; the
+     * package ships 'view', 'edit' and 'delete', and an application adds its
+     * own in resources/views/vendor/table/icons.
+     * @param string|null $icon
+     * @return $this
+     */
+    public function setIcon(?string $icon)
+    {
+        $this->icon = $icon;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getIcon(): ?string
+    {
+        return $this->icon;
     }
 
     /**
