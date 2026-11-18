@@ -78,6 +78,18 @@ class Table
     private $filterable = false;
 
     /**
+     * Display names of the fields that get no column.
+     * @var string[]
+     */
+    private $hiddenColumns = [];
+
+    /**
+     * Display names of the fields that get no filter.
+     * @var string[]
+     */
+    private $hiddenFilters = [];
+
+    /**
      * @var \Closure|null
      */
     private $resourceUrlResolver;
@@ -154,6 +166,30 @@ class Table
     }
 
     /**
+     * Leave these fields (by display name) out of the table, e.g. an
+     * identifier that means nothing to the reader. Their values stay in the
+     * resources, so actions and resolvers still see them.
+     * @param string[] $names
+     * @return $this
+     */
+    public function hideColumns(array $names)
+    {
+        $this->hiddenColumns = array_values(array_unique(array_merge($this->hiddenColumns, $names)));
+        return $this;
+    }
+
+    /**
+     * Leave these filterable fields (by display name) out of the filter form.
+     * @param string[] $names
+     * @return $this
+     */
+    public function hideFilters(array $names)
+    {
+        $this->hiddenFilters = array_values(array_unique(array_merge($this->hiddenFilters, $names)));
+        return $this;
+    }
+
+    /**
      * Resolve the url a related resource (as shown in a relationship cell)
      * links to. Null suppresses the link -- unlike the label resolver's null,
      * which delegates to a default, this one is the final answer.
@@ -191,6 +227,7 @@ class Table
         // different types) does not share one key set, so the first item
         // alone would leave later rows with too few or misaligned cells.
         $columns = [];
+        $labels = [];
         $rows = [];
         foreach ($this->resourceCollection as $resource) {
             /** @var RESTResource $resource */
@@ -202,15 +239,20 @@ class Table
                 }
 
                 $key = $value->getField()->getDisplayName();
+                if (in_array($key, $this->hiddenColumns, true)) {
+                    continue;
+                }
+
                 if (!in_array($key, $columns, true)) {
                     $columns[] = $key;
+                    $labels[$key] = $this->getFieldLabel($value->getField());
                 }
 
                 $cells[$key] = $this->makeCell($value);
             }
 
-            // Actions with an icon sit next to the row as buttons, the rest
-            // go in the row's dropdown menu.
+            // Buttons (an icon, or a label for an action that asks for it)
+            // sit next to the row, the rest go in the row's dropdown menu.
             $iconActions = [];
             $menuActions = [];
             foreach ($this->modelActions as $action) {
@@ -218,7 +260,7 @@ class Table
                     continue;
                 }
 
-                if ($action->getIcon() !== null) {
+                if ($action->isButton()) {
                     $iconActions[] = $action;
                 } else {
                     $menuActions[] = $action;
@@ -243,7 +285,7 @@ class Table
         $filters = $this->makeFilters($currentUrl);
 
         return new HtmlString(view('table::table', [
-            'columns' => $this->makeColumns($columns, $currentUrl),
+            'columns' => $this->makeColumns($columns, $currentUrl, $labels),
             'filters' => $filters,
             'filterAction' => $currentUrl ? $currentUrl->getPath() : null,
             'filterClearUrl' => $currentUrl ? $this->getFilterClearUrl($currentUrl, $filters) : null,
@@ -258,9 +300,10 @@ class Table
     /**
      * @param string[] $keys
      * @param QueryUrl|null $currentUrl
+     * @param string[] $labels key => header
      * @return Column[]
      */
-    protected function makeColumns(array $keys, ?QueryUrl $currentUrl)
+    protected function makeColumns(array $keys, ?QueryUrl $currentUrl, array $labels = [])
     {
         $sortableFields = [];
         if ($this->sortable && $currentUrl) {
@@ -276,7 +319,7 @@ class Table
         $columns = [];
         foreach ($keys as $key) {
             if (!isset($sortableFields[$key])) {
-                $columns[] = new Column($key);
+                $columns[] = new Column($key, null, null, $labels[$key] ?? null);
                 continue;
             }
 
@@ -295,7 +338,8 @@ class Table
                     [ ResourceTransformer::SORT_PARAMETER => $nextSort ],
                     $this->paginationQueryParameters
                 ),
-                $direction
+                $direction,
+                $labels[$key] ?? null
             );
         }
 
@@ -319,12 +363,17 @@ class Table
             }
 
             $name = $field->getDisplayName();
+            if (in_array($name, $this->hiddenFilters, true)) {
+                continue;
+            }
+
             $value = $currentUrl->get($name);
 
             $filters[] = new Filter(
                 $name,
                 is_scalar($value) ? (string) $value : null,
-                $field->getAllowedValues() ?: null
+                $field->getAllowedValues() ?: null,
+                $this->getFieldLabel($field)
             );
         }
 
@@ -373,6 +422,28 @@ class Table
         }
 
         return $hidden;
+    }
+
+    /**
+     * What a field is called in a header or on a filter: the label() of its
+     * definition, and without one its display name in words ("updated_at"
+     * and "updatedAt" both become "Updated at").
+     * @param \CatLab\Charon\Models\Properties\Base\Field $field
+     * @return string
+     */
+    protected function getFieldLabel($field)
+    {
+        $name = $field->getDisplayName();
+
+        $label = $field->getLabel();
+        if (is_string($label) && $label !== '' && $label !== ucfirst($name)) {
+            return $label;
+        }
+
+        $words = preg_replace('/(?<=[a-z0-9])([A-Z])/', ' $1', $name);
+        $words = str_replace([ '_', '-' ], ' ', $words);
+
+        return ucfirst(strtolower(trim($words)));
     }
 
     /**

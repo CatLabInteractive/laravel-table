@@ -9,6 +9,7 @@ use Tests\Support\BookAction;
 use Tests\Support\BookController;
 use Tests\Support\Definitions\AuthorDefinition;
 use Tests\Support\Definitions\BookDefinition;
+use Tests\Support\Definitions\LabelledBookDefinition;
 use Tests\Support\Models\Author;
 use Tests\Support\Models\Book;
 use Tests\Support\Models\Tag;
@@ -152,7 +153,7 @@ class TableTest extends TestCase
         $html = (string) $table->render();
 
         // page is dropped (sorting restarts at page 1), status is kept.
-        $this->assertMatchesRegularExpression('#<a href="/books\?status=draft&amp;sort=title">\s*title#', $html);
+        $this->assertMatchesRegularExpression('#<a href="/books\?status=draft&amp;sort=title">\s*Title#', $html);
         // status is filterable but not sortable: no sort link for it.
         $this->assertStringNotContainsString('sort=status', $html);
     }
@@ -164,14 +165,14 @@ class TableTest extends TestCase
             ->render();
 
         $this->assertStringContainsString('sort=%21title', $ascending);
-        $this->assertMatchesRegularExpression('~title\s*&#9650;~', $ascending);
+        $this->assertMatchesRegularExpression('~Title\s*&#9650;~', $ascending);
 
         $descending = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?sort=!title'))
             ->sortable()
             ->render();
 
         $this->assertMatchesRegularExpression('#<a href="/books\?sort=title">#', $descending);
-        $this->assertMatchesRegularExpression('~title\s*&#9660;~', $descending);
+        $this->assertMatchesRegularExpression('~Title\s*&#9660;~', $descending);
     }
 
     public function testHeadersStayPlainUnlessSortingIsEnabled()
@@ -273,7 +274,7 @@ class TableTest extends TestCase
 
         // the others are items in the dropdown menu
         $this->assertStringContainsString('data-toggle="dropdown"', $html);
-        $this->assertMatchesRegularExpression('~<a class="dropdown-item" href="[^"]*/books/1/export">Export</a>~', $html);
+        $this->assertMatchesRegularExpression('~<a href="[^"]*/books/1/export" class="dropdown-item"\s*>Export</a>~', $html);
         $this->assertStringNotContainsString('>Edit</a>', $html);
     }
 
@@ -286,6 +287,101 @@ class TableTest extends TestCase
         $this->assertStringNotContainsString('/books/1/archive', $html);
         $this->assertStringNotContainsString('table-actions-menu', $html);
         $this->assertStringContainsString('table-action-edit', $html);
+    }
+
+    public function testHeadersAndFiltersUseTheLabelOfTheDefinition()
+    {
+        $books = $this->toCollection([ new Book(1, 'Emma') ], LabelledBookDefinition::class);
+
+        $html = (string) (new Table($books, new LabelledBookDefinition(), $this->indexContext(), '/books'))
+            ->filterable()
+            ->render();
+
+        $this->assertMatchesRegularExpression('~<th[^>]*>\s*Stage\s*</th>~', $html);
+        $this->assertMatchesRegularExpression('~<th[^>]*>\s*Title\s*</th>~', $html);
+        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Stage</span>\s*<select[^>]*name="status"~', $html);
+    }
+
+    public function testHiddenColumnsAndFiltersAreLeftOut()
+    {
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books'))
+            ->filterable()
+            ->hideColumns([ 'status', 'meta' ])
+            ->hideFilters([ 'status' ])
+            ->render();
+
+        $this->assertDoesNotMatchRegularExpression('~<th[^>]*>\s*Status\s*</th>~', $html);
+        $this->assertDoesNotMatchRegularExpression('~<th[^>]*>\s*Meta\s*</th>~', $html);
+        $this->assertStringNotContainsString('name="status"', $html);
+        $this->assertStringContainsString('name="title"', $html);
+        $this->assertStringContainsString('Emma', $html);
+    }
+
+    public function testALabelledActionIsAButtonWithItsText()
+    {
+        Route::get('books/{id}/export', [ BookController::class, 'export' ]);
+
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext()))
+            ->modelAction((new BookAction([ BookController::class, 'export' ], 'Export'))->showLabel()->setStyle('primary'))
+            ->render();
+
+        $this->assertMatchesRegularExpression('~<a href="[^"]*/books/1/export" class="btn btn-sm btn-primary table-action"\s*>Export</a>~', $html);
+        $this->assertStringNotContainsString('table-actions-menu', $html);
+    }
+
+    public function testAnActionWithAMethodIsAFormThatAsksForConfirmation()
+    {
+        Route::post('books/{id}/archive', [ BookController::class, 'archive' ]);
+
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext()))
+            ->modelAction(
+                (new BookAction([ BookController::class, 'archive' ], 'Archive'))
+                    ->showLabel()
+                    ->setMethod('delete')
+                    ->setConfirm('Archive "Emma"?')
+            )
+            ->render();
+
+        $this->assertMatchesRegularExpression('~<form method="post" action="[^"]*/books/1/archive"~', $html);
+        $this->assertStringContainsString('name="_token"', $html);
+        $this->assertStringContainsString('<input type="hidden" name="_method" value="DELETE">', $html);
+        // the question is json inside an attribute: no quote can break out of it
+        $this->assertStringContainsString('onsubmit="return confirm(&quot;Archive \&quot;Emma\&quot;?&quot;);"', $html);
+        $this->assertMatchesRegularExpression('~<button type="submit" class="btn btn-sm btn-secondary table-action"\s*>Archive</button>~', $html);
+    }
+
+    public function testAnActionWithOptionsPutsASelectInFrontOfItsButton()
+    {
+        Route::post('books/{id}/archive', [ BookController::class, 'archive' ]);
+
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext()))
+            ->modelAction(
+                (new BookAction([ BookController::class, 'archive' ], 'Move'))
+                    ->showLabel()
+                    ->setOptions('shelf', function () {
+                        return [ 3 => 'Classics', 4 => 'Romance' ];
+                    }, function () {
+                        return 4;
+                    })
+            )
+            ->render();
+
+        $this->assertMatchesRegularExpression('~<form method="post"~', $html);
+        $this->assertMatchesRegularExpression('~<select name="shelf"[^>]*aria-label="Move"~', $html);
+        $this->assertMatchesRegularExpression('~<option value="3"\s*>Classics</option>~', $html);
+        $this->assertMatchesRegularExpression('~<option value="4"\s+selected\s*>Romance</option>~', $html);
+    }
+
+    public function testAMenuActionWithAMethodIsAFormInTheMenu()
+    {
+        Route::post('books/{id}/archive', [ BookController::class, 'archive' ]);
+
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext()))
+            ->modelAction((new BookAction([ BookController::class, 'archive' ], 'Archive'))->setMethod('post'))
+            ->render();
+
+        $this->assertStringContainsString('table-actions-menu', $html);
+        $this->assertMatchesRegularExpression('~<button type="submit" class="dropdown-item"\s*>Archive</button>~', $html);
     }
 
     private function tableWithActions(bool $showMenuActions = true): Table

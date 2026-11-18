@@ -47,12 +47,7 @@
 
                     <td class="table-actions text-right text-end text-nowrap">
                         @foreach($row['iconActions'] as $action)
-                            <a
-                                href="{{ $action->getUrl($row['resource']) }}"
-                                class="btn btn-sm {{ $action->getIcon() === 'delete' ? 'btn-outline-danger' : 'btn-outline-secondary' }} table-action table-action-{{ $action->getIcon() }}"
-                                title="{{ $action->getLabel() }}"
-                                aria-label="{{ $action->getLabel() }}"
-                            >@include('table::icons.' . $action->getIcon())</a>
+                            @include('table::action', [ 'action' => $action, 'resource' => $row['resource'], 'menu' => false ])
                         @endforeach
 
                         @if(count($row['menuActions']) > 0)
@@ -69,7 +64,7 @@
                                 >@include('table::icons.more')</button>
                                 <div class="dropdown-menu dropdown-menu-right dropdown-menu-end">
                                     @foreach($row['menuActions'] as $action)
-                                        <a class="dropdown-item" href="{{ $action->getUrl($row['resource']) }}">{{ $action->getLabel() }}</a>
+                                        @include('table::action', [ 'action' => $action, 'resource' => $row['resource'], 'menu' => true ])
                                     @endforeach
                                 </div>
                             </div>
