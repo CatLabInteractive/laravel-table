@@ -19,6 +19,11 @@ class Column
     /**
      * @var string|null
      */
+    private $label;
+
+    /**
+     * @var string|null
+     */
     private $sortUrl;
 
     /**
@@ -31,8 +36,9 @@ class Column
      * @param string|null $sortUrl
      * @param string|null $sortDirection
      */
-    public function __construct($key, $sortUrl = null, $sortDirection = null)
+    public function __construct($key, $sortUrl = null, $sortDirection = null, $label = null)
     {
+        $this->label = $label;
         $this->key = $key;
         $this->sortUrl = $sortUrl;
         $this->sortDirection = $sortDirection;
@@ -51,7 +57,7 @@ class Column
      */
     public function getLabel()
     {
-        return $this->key;
+        return $this->label ?? $this->key;
     }
 
     /**

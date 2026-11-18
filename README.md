@@ -24,6 +24,9 @@ echo $table->render();
 ## Cells
 
 Every visible property of a resource becomes a column; columns are the union over all rows, in first-seen order.
+The header is the field's `label()` from the resource definition, and without one its display name in words
+(`created_at` and `createdAt` both become "Created at"). `hideColumns([ 'type' ])` leaves fields (by display
+name) out of the table; their values stay in the resources, so actions and resolvers still see them.
 
 - **Scalar fields** render as-is.
 - **Relationships** (expanded `ChildValue` / `ChildrenValue`) render as a comma separated list of related
@@ -40,8 +43,8 @@ API (`?sort=name`, `?sort=!name`, `?name=value`). Pagination parameters (`page`,
 from those urls; every other query parameter is preserved.
 
 The filter form is a Bootstrap 3 `form-inline` bar (`.table-filters`): one small input group per filterable field
-with a humanized label (`createdAt` -> "Created at"), a search button and - when a filter is active - a "Clear"
-link back to the unfiltered url.
+labelled like the column headers, a search button and - when a filter is active - a "Clear"
+link back to the unfiltered url. `hideFilters([ 'type' ])` leaves filterable fields out of the form.
 
 ## Row actions
 
@@ -56,7 +59,27 @@ $table->modelAction((new ModelAction('BookController@edit', 'Edit'))->setIcon('e
 $table->modelAction(new ModelAction('BookController@export', 'Export')); // in the dropdown
 ```
 
+An action can also be drawn and done differently:
+
+- `showLabel()`: a button with its text next to the row, instead of an icon or a menu entry.
+- `setStyle('primary')`: the Bootstrap button style of an icon or labelled button.
+- `setMethod('post')` (or `put`, `patch`, `delete`): the action is a small form with a csrf token instead of a
+  link, also inside the menu.
+- `setConfirm('Archive this book?')`: a browser confirm before the link is followed or the form is sent.
+- `setOptions('shelf', fn ($book) => [ 3 => 'Classics' ], fn ($book) => 3)`: a select in front of the button,
+  posted under that name (the method becomes `post`); the third argument preselects a value.
+
+```php
+$table->modelAction(
+    (new ModelAction('BookController@archive', 'Archive'))
+        ->showLabel()
+        ->setStyle('outline-danger')
+        ->setMethod('post')
+        ->setConfirm('Archive this book?')
+);
+```
+
 ## Views
 
-Publish `resources/views` to `resources/views/vendor/table` to customise `table`, `cell`, `filters` and
+Publish `resources/views` to `resources/views/vendor/table` to customise `table`, `action`, `cell`, `filters` and
 `pagination`, or to add icons (`icons/<name>.blade.php`).

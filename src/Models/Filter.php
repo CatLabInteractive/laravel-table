@@ -24,12 +24,18 @@ class Filter
     private $options;
 
     /**
+     * @var string|null
+     */
+    private $label;
+
+    /**
      * @param string $name
      * @param string|null $value
      * @param string[]|null $options
      */
-    public function __construct($name, $value = null, ?array $options = null)
+    public function __construct($name, $value = null, ?array $options = null, ?string $label = null)
     {
+        $this->label = $label;
         $this->name = $name;
         $this->value = $value;
         $this->options = $options;
@@ -49,6 +55,10 @@ class Filter
      */
     public function getLabel()
     {
+        if ($this->label !== null) {
+            return $this->label;
+        }
+
         $label = preg_replace('/(?<=[a-z0-9])([A-Z])/', ' $1', $this->name);
         $label = str_replace(['_', '-'], ' ', $label);
         return ucfirst(strtolower(trim($label)));
