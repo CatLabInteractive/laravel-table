@@ -20,7 +20,6 @@ use CatLab\Laravel\Table\Models\RelatedResource;
 use CatLab\Laravel\Table\Support\QueryUrl;
 use CatLab\Laravel\Table\Models\ModelAction;
 use CatLab\Laravel\Table\Models\Pagination;
-use CatLab\Requirements\Enums\PropertyType;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -369,17 +368,23 @@ class Table
                 continue;
             }
 
+            $options = $field->getAllowedValues() ?: null;
+            $operators = $this->getFilterOperators($field, $options !== null);
+
+            // ?name=value is "is"; ?name[neq]=value picks a condition. The
+            // form shows one condition per field: the first one it knows.
             $value = $currentUrl->get($name);
             $operator = null;
             if (is_array($value)) {
-                $operator = isset($value['op']) && is_string($value['op']) ? $value['op'] : null;
-                $value = $value['value'] ?? null;
-            }
-
-            $options = $field->getAllowedValues() ?: null;
-            $operators = $this->getFilterOperators($field, $options !== null);
-            if ($operator !== null && $operator !== 'eq' && !in_array($operator, $operators, true)) {
-                $operator = null;
+                $conditions = $value;
+                $value = null;
+                foreach ($conditions as $condition => $operand) {
+                    if (in_array($condition, $operators, true)) {
+                        $operator = $condition;
+                        $value = Filter::operatorTakesValue($condition) ? $operand : null;
+                        break;
+                    }
+                }
             }
 
             $filters[] = new Filter(
@@ -397,8 +402,8 @@ class Table
 
     /**
      * The operators (request names of CatLab\Charon\Enums\FilterOperator) a
-     * filter offers: is, is not, contains (text without fixed options), is
-     * empty and is not empty.
+     * filter offers: is, is not, contains (searchable fields without fixed
+     * options), is empty and is not empty.
      * @param ResourceField $field
      * @param bool $hasOptions
      * @return string[]
@@ -407,7 +412,8 @@ class Table
     {
         $operators = [ FilterOperator::REQUEST_EQ, FilterOperator::REQUEST_NEQ ];
 
-        if (!$hasOptions && in_array($field->getType(), [ PropertyType::STRING, PropertyType::HTML ], true)) {
+        // charon only allows contains on searchable() fields.
+        if (!$hasOptions && $field->isSearchable()) {
             $operators[] = FilterOperator::REQUEST_CONTAINS;
         }
 
@@ -450,15 +456,35 @@ class Table
         foreach ($currentUrl->getQuery() as $key => $value) {
             if (
                 in_array($key, $filterNames, true) ||
-                in_array($key, $this->paginationQueryParameters, true) ||
-                !is_scalar($value)
+                in_array($key, $this->paginationQueryParameters, true)
             ) {
                 continue;
             }
-            $hidden[$key] = $value;
+            // A condition on a field without a filter in the form
+            // (?store[neq]=3 with hideFilters) is kept as store[neq].
+            $this->addHiddenParameter($hidden, (string) $key, $value);
         }
 
         return $hidden;
+    }
+
+    /**
+     * @param array $hidden input name => value
+     * @param string $name
+     * @param mixed $value
+     */
+    private function addHiddenParameter(array &$hidden, $name, $value)
+    {
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $this->addHiddenParameter($hidden, $name . '[' . $k . ']', $v);
+            }
+            return;
+        }
+
+        if (is_scalar($value)) {
+            $hidden[$name] = $value;
+        }
     }
 
     /**

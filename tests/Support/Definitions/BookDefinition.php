@@ -17,6 +17,7 @@ class BookDefinition extends ResourceDefinition
             ->string()
             ->sortable()
             ->filterable()
+            ->searchable()
             ->visible(true, true);
 
         $this->field('status')

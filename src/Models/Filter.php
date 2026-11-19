@@ -6,8 +6,9 @@ namespace CatLab\Laravel\Table\Models;
  * One input of the filter form: a filterable field, its current operator and
  * value and, for enum-like fields, the values it may take.
  *
- * The form sends name[op] and name[value] (see CatLab\Charon\Enums\FilterOperator);
- * a plain ?name=value in the url is read as equality.
+ * The form sends one parameter per condition (see CatLab\Charon\Enums\FilterOperator):
+ * ?name=value for "is", ?name[neq]=value, ?name[contains]=value,
+ * ?name[empty]=1, ?name[not_empty]=1.
  */
 class Filter
 {
@@ -106,21 +107,22 @@ class Filter
     }
 
     /**
-     * Name of the operator input.
-     * @return string
-     */
-    public function getOperatorInputName()
-    {
-        return $this->name . '[op]';
-    }
-
-    /**
-     * Name of the value input: name[value] when operators are offered, else the plain name.
+     * Name of the value input for the current condition: the plain name for
+     * "is", name[condition] otherwise.
      * @return string
      */
     public function getValueInputName()
     {
-        return $this->hasOperators() ? $this->name . '[value]' : $this->name;
+        return $this->getInputNameFor($this->operator);
+    }
+
+    /**
+     * @param string $operator request name ('' is "is")
+     * @return string
+     */
+    public function getInputNameFor($operator)
+    {
+        return $operator === '' ? $this->name : $this->name . '[' . $operator . ']';
     }
 
     /**

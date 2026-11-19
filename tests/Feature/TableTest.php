@@ -191,9 +191,9 @@ class TableTest extends TestCase
         $html = (string) $table->render();
 
         $this->assertStringContainsString('<form method="get" action="/books"', $html);
-        $this->assertMatchesRegularExpression('#<input[^>]*name="title\[value\]"[^>]*value="Em"#', $html);
+        $this->assertMatchesRegularExpression('#<input[^>]*name="title"[^>]*value="Em"#', $html);
         // enum fields become a select with every allowed value
-        $this->assertMatchesRegularExpression('#<select[^>]*name="status\[value\]"#', $html);
+        $this->assertMatchesRegularExpression('#<select[^>]*name="status"#', $html);
         $this->assertStringContainsString('<option value="draft"', $html);
         $this->assertStringContainsString('<option value="published"', $html);
         // sorting survives filtering, pagination does not
@@ -249,8 +249,8 @@ class TableTest extends TestCase
             ->render();
 
         // labels are humanized and sit in an input group next to their input
-        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Title</span>\s*<select[^>]*name="title\[op\]"~', $active);
-        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Status</span>\s*<select[^>]*name="status\[op\]"~', $active);
+        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Title</span>\s*<select[^>]*id="table-filter-title-op"~', $active);
+        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Status</span>\s*<select[^>]*id="table-filter-status-op"~', $active);
         $this->assertStringContainsString('glyphicon-search', $active);
         // an active filter offers a clear link that keeps the sort but drops the filters
         $this->assertStringContainsString('href="/books?sort=title"', $active);
@@ -299,7 +299,7 @@ class TableTest extends TestCase
 
         $this->assertMatchesRegularExpression('~<th[^>]*>\s*Stage\s*</th>~', $html);
         $this->assertMatchesRegularExpression('~<th[^>]*>\s*Title\s*</th>~', $html);
-        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Stage</span>\s*<select[^>]*name="status\[op\]"~', $html);
+        $this->assertMatchesRegularExpression('~<span class="input-group-addon">Stage</span>\s*<select[^>]*id="table-filter-status-op"~', $html);
     }
 
     public function testHiddenColumnsAndFiltersAreLeftOut()
@@ -312,8 +312,8 @@ class TableTest extends TestCase
 
         $this->assertDoesNotMatchRegularExpression('~<th[^>]*>\s*Status\s*</th>~', $html);
         $this->assertDoesNotMatchRegularExpression('~<th[^>]*>\s*Meta\s*</th>~', $html);
-        $this->assertStringNotContainsString('name="status[', $html);
-        $this->assertStringContainsString('name="title[value]"', $html);
+        $this->assertStringNotContainsString('table-filter-status', $html);
+        $this->assertStringContainsString('name="title"', $html);
         $this->assertStringContainsString('Emma', $html);
     }
 
@@ -402,14 +402,14 @@ class TableTest extends TestCase
             ->modelAction((new BookAction([ BookController::class, 'archive' ], 'Archive'))->setCondition($show));
     }
 
-    public function testEveryFilterOffersOperatorsAndContainsOnlyForFreeText()
+    public function testEveryFilterOffersConditionsAndContainsOnlyForSearchableFreeText()
     {
         $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books'))
             ->filterable()
             ->render();
 
-        preg_match('~<select[^>]*name="title\[op\]"[^>]*>(.*?)</select>~s', $html, $title);
-        preg_match('~<select[^>]*name="status\[op\]"[^>]*>(.*?)</select>~s', $html, $status);
+        preg_match('~<select[^>]*id="table-filter-title-op"[^>]*>(.*?)</select>~s', $html, $title);
+        preg_match('~<select[^>]*id="table-filter-status-op"[^>]*>(.*?)</select>~s', $html, $status);
 
         $this->assertNotEmpty($title);
         $this->assertNotEmpty($status);
@@ -420,38 +420,43 @@ class TableTest extends TestCase
             $this->assertMatchesRegularExpression('~<option value="' . $value . '"[^>]*>' . $label . '</option>~', $title[1]);
         }
 
-        // a field with fixed options gets no "contains"
+        // every option names the value input for its condition
+        $this->assertStringContainsString('data-input-name="title[neq]"', $title[1]);
+        $this->assertStringContainsString('data-input-name="title"', $title[1]);
+        // a field with fixed options (and not searchable) gets no "contains"
         $this->assertStringNotContainsString('value="contains"', $status[1]);
         $this->assertStringContainsString('value="not_empty"', $status[1]);
     }
 
     public function testAnOperatorFromTheUrlIsSelectedAndHidesTheValueWhenItNeedsNone()
     {
-        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title%5Bop%5D=not_empty&sort=title'))
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title%5Bnot_empty%5D=1&sort=title'))
             ->filterable()
             ->render();
 
         $this->assertMatchesRegularExpression('~<option value="not_empty"[^>]*selected[^>]*>is not empty</option>~', $html);
-        $this->assertMatchesRegularExpression('~<input[^>]*name="title\[value\]"[^>]*hidden disabled~', $html);
+        // the value is not sent, the flag is: title[not_empty]=1
+        $this->assertMatchesRegularExpression('~<input type="hidden" class="table-filter-flag" value="1"\s+name="title\[not_empty\]"~', $html);
+        $this->assertMatchesRegularExpression('~<input type="text" class="form-control table-filter-value"\s+hidden disabled~', $html);
         // "is not empty" is an active filter on its own: it can be cleared
         $this->assertStringContainsString('href="/books?sort=title"', $html);
     }
 
     public function testContainsFromTheUrlKeepsItsValueAndSortLinksKeepTheFilter()
     {
-        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title%5Bop%5D=contains&title%5Bvalue%5D=mm'))
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title%5Bcontains%5D=mm'))
             ->sortable()
             ->filterable()
             ->render();
 
         $this->assertMatchesRegularExpression('~<option value="contains"[^>]*selected~', $html);
-        $this->assertMatchesRegularExpression('~<input[^>]*name="title\[value\]"[^>]*value="mm"~', $html);
-        $this->assertStringContainsString('title%5Bop%5D=contains&amp;title%5Bvalue%5D=mm', $html);
+        $this->assertMatchesRegularExpression('~<input[^>]*name="title\[contains\]"[^>]*value="mm"~', $html);
+        $this->assertStringContainsString('title%5Bcontains%5D=mm', $html);
     }
 
     public function testAnUntouchedFilterFormLeavesNoTraceInTheUrls()
     {
-        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title%5Bop%5D=&title%5Bvalue%5D=&sort=title'))
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?title%5Bneq%5D=&sort=title'))
             ->sortable()
             ->filterable()
             ->render();
@@ -471,5 +476,16 @@ class TableTest extends TestCase
         $this->assertStringContainsString('>is niet leeg</option>', $html);
         $this->assertStringContainsString('Filteren', $html);
         $this->assertStringContainsString('Wissen', $html);
+    }
+
+    public function testAConditionOnAHiddenFilterSurvivesSubmittingTheForm()
+    {
+        $html = (string) (new Table($this->books(), new BookDefinition(), $this->indexContext(), '/books?status%5Bneq%5D=draft&shelf%5Bneq%5D=3'))
+            ->filterable()
+            ->hideFilters([ 'status' ])
+            ->render();
+
+        $this->assertStringContainsString('<input type="hidden" name="status[neq]" value="draft">', $html);
+        $this->assertStringContainsString('<input type="hidden" name="shelf[neq]" value="3">', $html);
     }
 }
