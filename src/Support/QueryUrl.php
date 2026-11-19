@@ -32,9 +32,29 @@ class QueryUrl
 
         // A submitted filter form sends every field, blank ones included;
         // an empty parameter carries no information, so it is not kept.
-        $this->query = array_filter($this->query, function ($value) {
-            return $value !== '';
-        });
+        $this->query = self::withoutBlanks($this->query);
+    }
+
+    /**
+     * Drop '' values, also inside arrays (name[op]=&name[value]=), and the
+     * arrays left empty.
+     * @param array $query
+     * @return array
+     */
+    private static function withoutBlanks(array $query)
+    {
+        foreach ($query as $key => $value) {
+            if (is_array($value)) {
+                $value = self::withoutBlanks($value);
+                $query[$key] = $value;
+            }
+
+            if ($value === '' || $value === []) {
+                unset($query[$key]);
+            }
+        }
+
+        return $query;
     }
 
     /**

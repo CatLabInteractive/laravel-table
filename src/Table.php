@@ -3,6 +3,7 @@
 namespace CatLab\Laravel\Table;
 
 use CatLab\Charon\Collections\ResourceCollection;
+use CatLab\Charon\Enums\FilterOperator;
 use CatLab\Charon\Interfaces\Context;
 use CatLab\Charon\Interfaces\ResourceDefinition;
 use CatLab\Charon\Interfaces\ResourceTransformer;
@@ -19,6 +20,7 @@ use CatLab\Laravel\Table\Models\RelatedResource;
 use CatLab\Laravel\Table\Support\QueryUrl;
 use CatLab\Laravel\Table\Models\ModelAction;
 use CatLab\Laravel\Table\Models\Pagination;
+use CatLab\Requirements\Enums\PropertyType;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -368,16 +370,51 @@ class Table
             }
 
             $value = $currentUrl->get($name);
+            $operator = null;
+            if (is_array($value)) {
+                $operator = isset($value['op']) && is_string($value['op']) ? $value['op'] : null;
+                $value = $value['value'] ?? null;
+            }
+
+            $options = $field->getAllowedValues() ?: null;
+            $operators = $this->getFilterOperators($field, $options !== null);
+            if ($operator !== null && $operator !== 'eq' && !in_array($operator, $operators, true)) {
+                $operator = null;
+            }
 
             $filters[] = new Filter(
                 $name,
                 is_scalar($value) ? (string) $value : null,
-                $field->getAllowedValues() ?: null,
-                $this->getFieldLabel($field)
+                $options,
+                $this->getFieldLabel($field),
+                $operator,
+                $operators
             );
         }
 
         return $filters;
+    }
+
+    /**
+     * The operators (request names of CatLab\Charon\Enums\FilterOperator) a
+     * filter offers: is, is not, contains (text without fixed options), is
+     * empty and is not empty.
+     * @param ResourceField $field
+     * @param bool $hasOptions
+     * @return string[]
+     */
+    protected function getFilterOperators($field, $hasOptions)
+    {
+        $operators = [ FilterOperator::REQUEST_EQ, FilterOperator::REQUEST_NEQ ];
+
+        if (!$hasOptions && in_array($field->getType(), [ PropertyType::STRING, PropertyType::HTML ], true)) {
+            $operators[] = FilterOperator::REQUEST_CONTAINS;
+        }
+
+        $operators[] = FilterOperator::REQUEST_EMPTY;
+        $operators[] = FilterOperator::REQUEST_NOT_EMPTY;
+
+        return $operators;
     }
 
     /**
