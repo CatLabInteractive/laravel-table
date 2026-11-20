@@ -46,6 +46,12 @@ The filter form is a Bootstrap 3 `form-inline` bar (`.table-filters`): one small
 labelled like the column headers, a search button and - when a filter is active - a "Clear"
 link back to the unfiltered url. `hideFilters([ 'type' ])` leaves filterable fields out of the form.
 
+Each filter has a condition in front of its value: is, is not, contains (only on `searchable()` fields), is empty
+and is not empty. The condition renames the value input, so the form sends one parameter per condition, which
+charon (^1.13, `FilterOperator`) turns into the query: `?name=value` (is), `?name[neq]=value`,
+`?name[contains]=value`, `?name[empty]=1`, `?name[not_empty]=1`. An untouched form leaves the urls clean. The
+labels are translated (`table::table`, en and nl).
+
 ## Row actions
 
 `modelAction()` adds a link to every row (hide it per row with `setCondition()`). An action with
